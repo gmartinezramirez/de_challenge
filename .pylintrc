@@ -1,0 +1,6 @@
+[MESSAGES CONTROL]
+disable=
+    missing-final-newline,
+    missing-module-docstring,
+    missing-function-docstring,
+    unused-argument
