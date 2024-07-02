@@ -1,1 +1,5 @@
 memory-profiler==0.61.0
+pylint==3.2.5
+mypy==1.10.1
+isort==5.13.2
+black==24.4.2
