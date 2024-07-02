@@ -12,6 +12,7 @@ def q1_memory(file_path: str) -> List[Tuple[datetime.date, str]]:
     logger.info("Start Q1 Memory function")
     return []
 
+
 if __name__ == "__main__":
     json_file_path = "data/farmers-protest-tweets-2021-2-4.json"
     q1_memory(json_file_path)
