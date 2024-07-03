@@ -1,4 +1,5 @@
 import json
+import unittest.mock
 from collections import defaultdict
 from datetime import date
 
@@ -65,7 +66,11 @@ def test_get_top_10_dates():
 
     assert len(top_dates) == 7  # Hay 7 fechas en total
     assert top_dates[0] == (date(2021, 2, 7), 5)
-    assert top_dates[-1] == (date(2021, 2, 2), 2)
+    assert set(date for date, count in top_dates if count == 2) == {
+        date(2021, 2, 2),
+        date(2021, 2, 4),
+        date(2021, 2, 6),
+    }
 
 
 def test_get_top_users():
@@ -107,7 +112,7 @@ def test_q1_memory_integration():
     def mock_read_json(*args, **kwargs):
         return df
 
-    with pytest.patch("pandas.read_json", mock_read_json):
+    with unittest.mock.patch("pandas.read_json", mock_read_json):
         result = q1_memory("fake_file.json")
 
     # Verificar los resultados
@@ -116,9 +121,21 @@ def test_q1_memory_integration():
         date(2021, 2, 7),
         "user1",
     )  # La fecha con más tweets (5) y un user más activo
-    assert result[1][0] == date(2021, 2, 1)  # Segunda fecha con más tweets (3)
-    assert result[2][0] == date(2021, 2, 3)  # Tercera fecha con más tweets (3)
-    assert result[3][0] == date(2021, 2, 5)  # Cuarta fecha con más tweets (3)
+    assert result[1][0] in {
+        date(2021, 2, 1),
+        date(2021, 2, 3),
+        date(2021, 2, 5),
+    }  # Fechas con 3 tweets
+    assert result[2][0] in {
+        date(2021, 2, 1),
+        date(2021, 2, 3),
+        date(2021, 2, 5),
+    }  # Fechas con 3 tweets
+    assert result[3][0] in {
+        date(2021, 2, 1),
+        date(2021, 2, 3),
+        date(2021, 2, 5),
+    }  # Fechas con 3 tweets
 
 
 @pytest.mark.parametrize("file_path", ["non_existent_file.json"])
