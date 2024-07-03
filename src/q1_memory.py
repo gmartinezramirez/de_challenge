@@ -12,6 +12,17 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def get_top_users(
+    top_dates: List[Tuple[date, int]],
+    date_user_counts: DefaultDict[date, DefaultDict[str, int]],
+) -> List[Tuple[date, str]]:
+    """Obtiene el usuario más activo para cada una de las top 10 fechas."""
+    return [
+        (tweet_date, max(date_user_counts[tweet_date].items(), key=lambda x: x[1])[0])
+        for tweet_date, _ in top_dates
+    ]
+
+
 def get_top_10_dates(date_counts: DefaultDict[date, int]) -> List[Tuple[date, int]]:
     """Obtiene las top 10 fechas con más tweets."""
     return sorted(date_counts.items(), key=lambda x: x[1], reverse=True)[:10]
@@ -90,6 +101,10 @@ def q1_memory(file_path: str) -> List[Tuple[date, str]]:
         )
         # Paso 2: Obtener top 10 fechas
         top_dates = get_top_10_dates(total_date_counts)
+        # Paso 3: Obtener usuarios más activos para las top 10 fechas
+        top_results = get_top_users(top_dates, total_date_user_counts)
+        logger.info("Procesamiento de Q1 Memory completado con éxito")
+        return top_results
         logger.info("Procesamiento de Q1 completado con éxito")
         return []
     except Exception as e:

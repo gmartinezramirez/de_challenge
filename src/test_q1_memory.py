@@ -1,10 +1,11 @@
+import json
 from collections import defaultdict
 from datetime import date
 
 import pandas as pd
 import pytest
 
-from q1_memory import get_top10_dates, process_chunk, q1_memory
+from q1_memory import get_top_10_dates, get_top_users, process_chunk, q1_memory
 
 # Dataset con 20 registros random
 MOCK_DATASET = [
@@ -67,13 +68,39 @@ def test_get_top_10_dates():
     assert top_dates[-1] == (date(2021, 2, 2), 2)
 
 
+def test_get_top_users():
+    top_dates = [(date(2021, 2, 7), 5), (date(2021, 2, 1), 3), (date(2021, 2, 5), 3)]
+    date_user_counts = defaultdict(
+        lambda: defaultdict(int),
+        {
+            date(2021, 2, 7): {
+                "user1": 1,
+                "user2": 1,
+                "user3": 1,
+                "user4": 1,
+                "user5": 1,
+            },
+            date(2021, 2, 1): {"user1": 2, "user2": 1},
+            date(2021, 2, 5): {"user1": 1, "user2": 1, "user3": 1},
+        },
+    )
+
+    top_users = get_top_users(top_dates, date_user_counts)
+
+    assert len(top_users) == 3
+    assert top_users[0] == (
+        date(2021, 2, 7),
+        "user1",
+    )  # Cualquiera de los usuarios podría ser el primero
+    assert top_users[1] == (date(2021, 2, 1), "user1")
+    assert top_users[2] == (
+        date(2021, 2, 5),
+        "user1",
+    )  # Cualquiera de los usuarios podría ser el primero
+
+
 def test_q1_memory_integration():
-    """Test de integracion usando un dataset de 20 registros random
-    Q1: Las top 10 fechas donde hay más tweets.
-    Mencionar el usuario (username) que más publicaciones tiene por cada uno de esos días.
-    Ejemplo de retorno:
-        [(datetime.date(1999, 11, 15), "LATAM321"), (datetime.date(1999, 7, 15), "LATAM_CHI"), ...]
-    """
+    """Test de integracion usando un dataset de 20 registros random"""
 
     df = pd.DataFrame(MOCK_DATASET)
 
@@ -84,7 +111,14 @@ def test_q1_memory_integration():
         result = q1_memory("fake_file.json")
 
     # Verificar los resultados
-    assert len(result) == 0  # TODO
+    assert len(result) == 7  # Debería haber 7 fechas únicas en nuestros datos de prueba
+    assert result[0] == (
+        date(2021, 2, 7),
+        "user1",
+    )  # La fecha con más tweets (5) y un user más activo
+    assert result[1][0] == date(2021, 2, 1)  # Segunda fecha con más tweets (3)
+    assert result[2][0] == date(2021, 2, 3)  # Tercera fecha con más tweets (3)
+    assert result[3][0] == date(2021, 2, 5)  # Cuarta fecha con más tweets (3)
 
 
 @pytest.mark.parametrize("file_path", ["non_existent_file.json"])
