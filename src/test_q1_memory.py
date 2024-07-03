@@ -1,7 +1,7 @@
 import pandas as pd
 import pytest
 
-from q1_memory import q1_memory
+from q1_memory import process_chunk, q1_memory
 
 # Dataset con 20 registros random
 MOCK_DATASET = [
@@ -31,6 +31,16 @@ MOCK_DATASET = [
 @pytest.fixture
 def sample_df():
     return pd.DataFrame(MOCK_DATASET)
+
+
+def test_process_chunk(sample_df):
+    date_counts, date_user_counts = process_chunk(sample_df)
+
+    assert date_counts[date(2021, 2, 1)] == 3
+    assert date_counts[date(2021, 2, 7)] == 5
+
+    assert date_user_counts[date(2021, 2, 1)]["user1"] == 2
+    assert date_user_counts[date(2021, 2, 7)]["user5"] == 1
 
 
 def test_q1_memory_integration():
