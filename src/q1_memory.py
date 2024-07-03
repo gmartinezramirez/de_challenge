@@ -2,9 +2,9 @@ import logging
 from collections import defaultdict
 from datetime import date
 from pathlib import Path
-from typing import DefaultDict, List, Tuple  # type: ignore
+from typing import DefaultDict, List, Tuple
 
-import pandas as pd  # type: ignore
+import pandas as pd
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
@@ -48,6 +48,7 @@ def process_chunk(
 def get_total_counts_batch(
     file_path: str, chunk_size: int
 ) -> Tuple[DefaultDict[date, int], DefaultDict[date, DefaultDict[str, int]]]:
+    # pylint: disable-msg=too-many-locals
     """Obtiene los conteos totales de fechas y usuarios del archivo."""
     total_date_counts: DefaultDict[date, int] = defaultdict(int)
     total_date_user_counts: DefaultDict[date, DefaultDict[str, int]] = defaultdict(
@@ -57,9 +58,9 @@ def get_total_counts_batch(
 
     # Obtener el número total de chunks
     with pd.read_json(file_path, lines=True, chunksize=chunk_size) as reader:
-        logger.info(f"Calculando el total de chunks a procesar")
+        logger.info("Calculando el total de chunks a procesar")
         total_chunks = sum(1 for _ in reader)
-    logger.info(f"Total de chunks a procesar: {total_chunks}")
+    logger.info("Total de chunks a procesar: %d", total_chunks)
 
     chunks = pd.read_json(file_path, lines=True, chunksize=chunk_size)
     for i, chunk in enumerate(chunks):
@@ -72,10 +73,13 @@ def get_total_counts_batch(
             for user, count in user_counts.items():
                 total_date_user_counts[tweet_date][user] += count
         logger.info(
-            f"Procesando chunk {i+1}/{total_chunks} - Filas en este chunk: {chunk_rows}"
+            "Procesando chunk %d/%d - Filas en este chunk: %d",
+            i + 1,
+            total_chunks,
+            chunk_rows,
         )
 
-    logger.info(f"Total de filas procesadas: {total_rows}")
+    logger.info("Total de filas procesadas: %d", total_rows)
     return total_date_counts, total_date_user_counts
 
 
@@ -93,11 +97,11 @@ def q1_memory(file_path: str) -> List[Tuple[date, str]]:
         raise FileNotFoundError(f"El archivo {file_path} no existe")
     try:
         # Setup variables
-        BATCH_SIZE = 10000
+        batch_size = 10000
 
         # Paso 1: Obtener conteos totales en batch
         total_date_counts, total_date_user_counts = get_total_counts_batch(
-            file_path, BATCH_SIZE
+            file_path, batch_size
         )
         # Paso 2: Obtener top 10 fechas
         top_dates = get_top_10_dates(total_date_counts)
@@ -105,8 +109,6 @@ def q1_memory(file_path: str) -> List[Tuple[date, str]]:
         top_results = get_top_users(top_dates, total_date_user_counts)
         logger.info("Procesamiento de Q1 Memory completado con éxito")
         return top_results
-        logger.info("Procesamiento de Q1 completado con éxito")
-        return []
     except Exception as e:
         logger.error("Error en el pipeline principal: %s", str(e))
         raise
@@ -116,8 +118,6 @@ if __name__ == "__main__":
     # Abrir archivo json
     import os
 
-    # Using sample file (only 50 registers)
-    # JSON_FILE_PATH = os.path.join(os.path.dirname(__file__), "sample.json")
     # Using real file
     JSON_FILE_PATH = os.path.join(
         os.path.dirname(__file__), "farmers-protest-tweets-2021-2-4.json"
