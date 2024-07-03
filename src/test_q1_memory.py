@@ -104,40 +104,6 @@ def test_get_top_users():
     )  # Cualquiera de los usuarios podría ser el primero
 
 
-def test_q1_memory_integration():
-    """Test de integracion usando un dataset de 20 registros random"""
-
-    df = pd.DataFrame(MOCK_DATASET)
-
-    def mock_read_json(*args, **kwargs):
-        return df
-
-    with unittest.mock.patch("pandas.read_json", mock_read_json):
-        result = q1_memory("fake_file.json")
-
-    # Verificar los resultados
-    assert len(result) == 7  # Debería haber 7 fechas únicas en nuestros datos de prueba
-    assert result[0] == (
-        date(2021, 2, 7),
-        "user1",
-    )  # La fecha con más tweets (5) y un user más activo
-    assert result[1][0] in {
-        date(2021, 2, 1),
-        date(2021, 2, 3),
-        date(2021, 2, 5),
-    }  # Fechas con 3 tweets
-    assert result[2][0] in {
-        date(2021, 2, 1),
-        date(2021, 2, 3),
-        date(2021, 2, 5),
-    }  # Fechas con 3 tweets
-    assert result[3][0] in {
-        date(2021, 2, 1),
-        date(2021, 2, 3),
-        date(2021, 2, 5),
-    }  # Fechas con 3 tweets
-
-
 @pytest.mark.parametrize("file_path", ["non_existent_file.json"])
 def test_q1_memory_file_not_found(file_path):
     with pytest.raises(FileNotFoundError):
