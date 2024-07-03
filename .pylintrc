@@ -4,3 +4,6 @@ disable=
     missing-module-docstring,
     missing-function-docstring,
     unused-argument
+
+[MASTER]
+ignore-patterns=test_.*?\.py
