@@ -1,7 +1,10 @@
+from collections import defaultdict
+from datetime import date
+
 import pandas as pd
 import pytest
 
-from q1_memory import process_chunk, q1_memory
+from q1_memory import get_top10_dates, process_chunk, q1_memory
 
 # Dataset con 20 registros random
 MOCK_DATASET = [
@@ -41,6 +44,27 @@ def test_process_chunk(sample_df):
 
     assert date_user_counts[date(2021, 2, 1)]["user1"] == 2
     assert date_user_counts[date(2021, 2, 7)]["user5"] == 1
+
+
+def test_get_top_10_dates():
+    date_counts = defaultdict(
+        int,
+        {
+            date(2021, 2, 1): 3,
+            date(2021, 2, 2): 2,
+            date(2021, 2, 3): 3,
+            date(2021, 2, 4): 2,
+            date(2021, 2, 5): 3,
+            date(2021, 2, 6): 2,
+            date(2021, 2, 7): 5,
+        },
+    )
+
+    top_dates = get_top_10_dates(date_counts)
+
+    assert len(top_dates) == 7  # Hay 7 fechas en total
+    assert top_dates[0] == (date(2021, 2, 7), 5)
+    assert top_dates[-1] == (date(2021, 2, 2), 2)
 
 
 def test_q1_memory_integration():

@@ -12,6 +12,11 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def get_top_10_dates(date_counts: DefaultDict[date, int]) -> List[Tuple[date, int]]:
+    """Obtiene las top 10 fechas con más tweets."""
+    return sorted(date_counts.items(), key=lambda x: x[1], reverse=True)[:10]
+
+
 def process_chunk(
     chunk: pd.DataFrame,
 ) -> Tuple[DefaultDict[date, int], DefaultDict[date, DefaultDict[str, int]]]:
@@ -83,6 +88,8 @@ def q1_memory(file_path: str) -> List[Tuple[date, str]]:
         total_date_counts, total_date_user_counts = get_total_counts_batch(
             file_path, BATCH_SIZE
         )
+        # Paso 2: Obtener top 10 fechas
+        top_dates = get_top_10_dates(total_date_counts)
         logger.info("Procesamiento de Q1 completado con éxito")
         return []
     except Exception as e:
