@@ -6,7 +6,7 @@ from datetime import date
 import pandas as pd
 import pytest
 
-from .q1_memory import get_top_10_dates, get_top_users, process_chunk, q1_memory
+from .q1_memory_pandas import get_top_10_dates, get_top_users, process_chunk, q1_memory
 
 # Dataset con 20 registros random
 MOCK_DATASET = [

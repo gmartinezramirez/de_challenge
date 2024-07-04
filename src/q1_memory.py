@@ -1,131 +1,139 @@
 import logging
-from collections import defaultdict
 from datetime import date
-from pathlib import Path
-from typing import DefaultDict, List, Tuple
+from typing import List, Tuple
 
-import pandas as pd
+from google.api_core import retry
+from google.cloud import bigquery
+from google.cloud.exceptions import GoogleCloudError
+
+from gcp_benchmark import (  # pylint: disable=import-error
+    execute_query_with_benchmark,
+    print_job_details,
+)
 
 logging.basicConfig(
     level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s"
 )
 logger = logging.getLogger(__name__)
 
+# Project config
+PROJECT_ID: str = "de-challenge-gm"
+DATASET_ID: str = "tweets"
+TABLE_NAME: str = "farmers-protest-tweets"
+# Job config
+USE_QUERY_CACHE: bool = False
+QUERY_PRIORITY: bigquery.QueryPriority = bigquery.QueryPriority.INTERACTIVE
+USE_LEGACY_SQL: bool = False
+GCP_CLIENT = bigquery.Client(project=PROJECT_ID)
+RETRY_CONFIG = retry.Retry(deadline=30)
 
-def get_top_users(
-    top_dates: List[Tuple[date, int]],
-    date_user_counts: DefaultDict[date, DefaultDict[str, int]],
-) -> List[Tuple[date, str]]:
-    """Obtiene el usuario más activo para cada una de las top 10 fechas."""
-    return [
-        (tweet_date, max(date_user_counts[tweet_date].items(), key=lambda x: x[1])[0])
-        for tweet_date, _ in top_dates
-    ]
-
-
-def get_top_10_dates(date_counts: DefaultDict[date, int]) -> List[Tuple[date, int]]:
-    """Obtiene las top 10 fechas con más tweets."""
-    return sorted(date_counts.items(), key=lambda x: x[1], reverse=True)[:10]
-
-
-def process_chunk(
-    chunk: pd.DataFrame,
-) -> Tuple[DefaultDict[date, int], DefaultDict[date, DefaultDict[str, int]]]:
-    """Procesa un chunk de datos y retorna los conteos de fechas y usuarios."""
-    date_counts: DefaultDict[date, int] = defaultdict(int)
-    date_user_counts: DefaultDict[date, DefaultDict[str, int]] = defaultdict(
-        lambda: defaultdict(int)
-    )
-    chunk["date"] = pd.to_datetime(chunk["date"]).dt.date
-    for _, row in chunk.iterrows():
-        tweet_date: date = row["date"]
-        username: str = row["user"]["username"]
-        date_counts[tweet_date] += 1
-        date_user_counts[tweet_date][username] += 1
-    return date_counts, date_user_counts
+JOB_CONFIG = bigquery.QueryJobConfig(
+    use_query_cache=USE_QUERY_CACHE,
+    priority=QUERY_PRIORITY,
+    use_legacy_sql=USE_LEGACY_SQL,
+)
 
 
-def get_total_counts_batch(
-    file_path: str, chunk_size: int
-) -> Tuple[DefaultDict[date, int], DefaultDict[date, DefaultDict[str, int]]]:
-    # pylint: disable-msg=too-many-locals
-    """Obtiene los conteos totales de fechas y usuarios del archivo."""
-    total_date_counts: DefaultDict[date, int] = defaultdict(int)
-    total_date_user_counts: DefaultDict[date, DefaultDict[str, int]] = defaultdict(
-        lambda: defaultdict(int)
-    )
-    total_rows = 0
-
-    # Obtener el número total de chunks
-    with pd.read_json(file_path, lines=True, chunksize=chunk_size) as reader:
-        logger.info("Calculando el total de chunks a procesar")
-        total_chunks = sum(1 for _ in reader)
-    logger.info("Total de chunks a procesar: %d", total_chunks)
-
-    chunks = pd.read_json(file_path, lines=True, chunksize=chunk_size)
-    for i, chunk in enumerate(chunks):
-        chunk_rows = len(chunk)
-        total_rows += chunk_rows
-        date_counts, date_user_counts = process_chunk(chunk)
-        for tweet_date, count in date_counts.items():
-            total_date_counts[tweet_date] += count
-        for tweet_date, user_counts in date_user_counts.items():
-            for user, count in user_counts.items():
-                total_date_user_counts[tweet_date][user] += count
-        logger.info(
-            "Procesando chunk %d/%d - Filas en este chunk: %d",
-            i + 1,
-            total_chunks,
-            chunk_rows,
-        )
-
-    logger.info("Total de filas procesadas: %d", total_rows)
-    return total_date_counts, total_date_user_counts
+Q1_MEMORY_QUERY: str = """
+-- Common Table Expression(CTE)
+-- CTE 1: Contar tweets por fecha
+WITH date_counts AS (
+  SELECT
+    DATE(date) AS tweet_date,
+    COUNT(*) AS tweet_count
+  FROM
+    `{project}.{dataset}.{table}`
+  GROUP BY
+    DATE(date)
+),
+-- CTE 2: Seleccionar las 10 fechas con más tweets
+top_10_dates AS (
+  SELECT
+    tweet_date,
+    tweet_count
+  FROM
+    date_counts
+  ORDER BY
+    tweet_count DESC
+  LIMIT 10
+),
+-- CTE 3: Contar tweets por usuario y fecha
+user_counts AS (
+  SELECT
+    DATE(date) AS tweet_date,
+    user.username,
+    COUNT(*) AS user_tweet_count
+  FROM
+    `{project}.{dataset}.{table}`
+  GROUP BY
+    DATE(date),
+    user.username
+),
+-- CTE 4: Hacer ranking de usuarios por número de tweets en cada fecha
+ranked_users AS (
+  SELECT
+    tweet_date,
+    username,
+    user_tweet_count,
+    ROW_NUMBER() OVER (PARTITION BY tweet_date ORDER BY user_tweet_count DESC) AS rank
+  FROM
+    user_counts
+)
+-- Query principal: Unir las top 10 fechas con los usuarios más activos
+-- Output tweet_date, top_user (username)
+SELECT
+  t.tweet_date,
+  r.username AS top_user
+FROM
+  top_10_dates t
+JOIN
+  ranked_users r
+ON
+  t.tweet_date = r.tweet_date
+WHERE
+  r.rank = 1
+ORDER BY
+  t.tweet_count DESC
+"""
 
 
 def q1_memory(file_path: str) -> List[Tuple[date, str]]:
     """
-    Q1: Las top 10 fechas donde hay más tweets.
-    file_path es un input de dataset json de 117407 registros (filas) de peso 407,7 mb
-    (verificado por macOS)
-    Mencionar el usuario (username) que más publicaciones tiene por cada uno de esos días.
-    Ejemplo de retorno:
-        [(datetime.date(1999, 11, 15), "LATAM321"), (datetime.date(1999, 7, 15), "LATAM_CHI"), ...]
-    """
-    logger.info("Iniciando: Q1 - Optimizado para consumo de memoria")
-    if not Path(file_path).exists():
-        raise FileNotFoundError(f"El archivo {file_path} no existe")
-    try:
-        # Setup variables
-        batch_size = 10000
+    Q1 Memory:
+        Las top 10 fechas donde hay más tweets
+        Ejemplo de output:
+            [(datetime.date(1999, 11, 15), "LATAM321"),
+            (datetime.date(1999, 7, 15), "LATAM_CHI"), ...]
+        q1_memory ejecuta la consulta Q1_MEMORY_QUERY que resuelve lo anterior
+        con un enfoque eficiente en memoria
 
-        # Paso 1: Obtener conteos totales en batch
-        total_date_counts, total_date_user_counts = get_total_counts_batch(
-            file_path, batch_size
+    Args:
+        file_path (str): No se usa en esta implementación
+        se mantiene por consistencia con la firma de la función.
+    Returns:
+        List[Tuple[date, str]]: Una lista de tuplas que contienen la fecha
+                                y el usuario más activo para cada fecha.
+    Raises:
+        GoogleCloudError: Si hay un error con la API de Google Cloud.
+    """
+    logger.info("Starting: q1_memory")
+    query = Q1_MEMORY_QUERY.format(
+        project=PROJECT_ID, dataset=DATASET_ID, table=TABLE_NAME
+    )
+
+    try:
+        query_job, client_execution_time = execute_query_with_benchmark(
+            GCP_CLIENT, query, JOB_CONFIG
         )
-        # Paso 2: Obtener top 10 fechas
-        top_dates = get_top_10_dates(total_date_counts)
-        # Paso 3: Obtener usuarios más activos para las top 10 fechas
-        top_results = get_top_users(top_dates, total_date_user_counts)
-        logger.info("Procesamiento de Q1 Memory completado con éxito")
-        return top_results
-    except Exception as e:
-        logger.error("Error en el pipeline principal: %s", str(e))
+        print_job_details(query_job, client_execution_time)
+        results = [(row.tweet_date, row.top_user) for row in query_job.result()]
+        logger.info("Sucessful finish: q1_memory")
+        return results
+    except GoogleCloudError as e:
+        print(f"Error en Bigquery: {str(e)}")
         raise
 
 
 if __name__ == "__main__":
-    # Abrir archivo json
-    import os
-
-    # Using real file
-    JSON_FILE_PATH = os.path.join(
-        os.path.dirname(__file__), "farmers-protest-tweets-2021-2-4.json"
-    )
-
-    # Imprime información de depuración
-    print("Carpeta actual:", os.getcwd())
-    print("filepath:", JSON_FILE_PATH)
-
-    result = q1_memory(JSON_FILE_PATH)
+    result = q1_memory("something")
     print(result)

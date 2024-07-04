@@ -61,7 +61,7 @@ def print_job_details(
 
 
 def execute_query_with_benchmark(
-    client: bigquery.Client, query: str, use_cache: bool
+    client: bigquery.Client, query: str, job_config: bigquery.QueryJobConfig
 ) -> Tuple[bigquery.QueryJob, float]:
     """
     Ejecuta una query de BigQuery y devuelve el job con su tiempo de ejecución
@@ -69,11 +69,11 @@ def execute_query_with_benchmark(
     Args:
         client (bigquery.Client)
         query (str)
-        use_cache (bool)
+        job_config (bigquery.QueryJobConfig)
     Returns:
         Tuple[bigquery.QueryJob, float]: El job y tiempo de ejecución del lado del cliente python.
     """
-    job_config = bigquery.QueryJobConfig(use_query_cache=use_cache)
+    logger.info("Ejecutando query")
     start_time = time.time()
     query_job = client.query(query, job_config=job_config)
     query_job.result()  # Esperar a que el job termine
@@ -84,5 +84,5 @@ def execute_query_with_benchmark(
         "hasta recibir la respuesta): %.2f segundos",
         client_execution_time,
     )
-    logger.info("Se uso query cache?: %s", use_cache)
+    logger.info("Se uso query cache?: %s", job_config.use_query_cache)
     return query_job, client_execution_time

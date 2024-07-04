@@ -21,6 +21,13 @@ test:
 	@echo "Running tests..."
 	pytest src/
 
+# Execution
+
+# Run tests
+q1-memory:
+	@echo "Running q1-memory..."
+	python src/q1_memory.py
+
 # Run all checks
 all: format lint type-check test
 	@echo "All checks passed!"
