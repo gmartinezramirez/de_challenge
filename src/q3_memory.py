@@ -60,9 +60,10 @@ LIMIT 10
 def q3_memory(file_path: str) -> List[Tuple[date, str]]:
     """
     Q3 Memory:
-        Los top 10 emojis más usados con su respectivo conteo
+        El top 10 histórico de usuarios (username) más influyentes
+        en función del conteo de las menciones (@) que registra cada uno de ellos
         Ejemplo de output:
-            [("✈️", 6856), ("❤️", 5876), ...]
+            [("LATAM321", 387), ("LATAM_CHI", 129), ...]
         q3_memory ejecuta la consulta Q3_MEMORY_QUERY que resuelve lo anterior
         con un enfoque eficiente en uso de memoria.
 
