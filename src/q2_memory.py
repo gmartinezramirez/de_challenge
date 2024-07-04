@@ -34,6 +34,7 @@ JOB_CONFIG = bigquery.QueryJobConfig(
 )
 
 # Rangos de Unicode
+# Referencia: https://www.unicode.org/charts/
 EMOTICONS = r"\x{{1F600}}-\x{{1F64F}}"
 MISC_SYMBOLS_PICTOGRAPHS = r"\x{{1F300}}-\x{{1F5FF}}"
 TRANSPORT_MAP_SYMBOLS = r"\x{{1F680}}-\x{{1F6FF}}"
@@ -92,7 +93,7 @@ CREATE TEMP FUNCTION ExtractEmoji(content STRING) AS (
    WHERE REGEXP_CONTAINS(char, r'[{UNICODE_RANGES}]'))
 );
 
--- Consulta principal
+-- Main Query
 WITH emoji_counts AS (
   -- Extraer y contar emojis en una sola pasada
   SELECT
