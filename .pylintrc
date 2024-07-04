@@ -3,7 +3,8 @@ disable=
     missing-final-newline,
     missing-module-docstring,
     missing-function-docstring,
-    unused-argument
+    unused-argument,
+    duplicate-code
 
 [MASTER]
 ignore-patterns=test_.*?\.py
