@@ -35,6 +35,8 @@ JOB_CONFIG = bigquery.QueryJobConfig(
 
 
 Q1_MEMORY_QUERY: str = """
+-- Common Table Expression(CTE)
+-- CTE 1: Contar tweets por fecha
 WITH date_counts AS (
   SELECT
     DATE(date) AS tweet_date,
@@ -44,6 +46,7 @@ WITH date_counts AS (
   GROUP BY
     DATE(date)
 ),
+-- CTE 2: Seleccionar las 10 fechas con más tweets
 top_10_dates AS (
   SELECT
     tweet_date,
@@ -54,6 +57,7 @@ top_10_dates AS (
     tweet_count DESC
   LIMIT 10
 ),
+-- CTE 3: Contar tweets por usuario y fecha
 user_counts AS (
   SELECT
     DATE(date) AS tweet_date,
@@ -65,6 +69,7 @@ user_counts AS (
     DATE(date),
     user.username
 ),
+-- CTE 4: Hacer ranking de usuarios por número de tweets en cada fecha
 ranked_users AS (
   SELECT
     tweet_date,
@@ -74,6 +79,8 @@ ranked_users AS (
   FROM
     user_counts
 )
+-- Query principal: Unir las top 10 fechas con los usuarios más activos
+-- Output tweet_date, top_user (username)
 SELECT
   t.tweet_date,
   r.username AS top_user
