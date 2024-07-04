@@ -40,6 +40,9 @@ q3_memory:
 	@echo "Running q3-memory..."
 	python src/q3_memory.py
 
+q3_time:
+	@echo "Running q3-time..."
+	python src/q3_time.py
 
 # Run all checks
 all: format lint type-check test
