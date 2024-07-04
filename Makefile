@@ -36,6 +36,11 @@ q2_memory:
 	@echo "Running q2-memory..."
 	python src/q2_memory.py
 
+q3_memory:
+	@echo "Running q3-memory..."
+	python src/q3_memory.py
+
+
 # Run all checks
 all: format lint type-check test
 	@echo "All checks passed!"
