@@ -24,13 +24,17 @@ test:
 # Execution
 
 # Run scripts
-q1-memory:
+q1_memory:
 	@echo "Running q1-memory..."
 	python src/q1_memory.py
 
-q1-time:
+q1_time:
 	@echo "Running q1-time..."
 	python src/q1_time.py
+
+q2_memory:
+	@echo "Running q2-memory..."
+	python src/q2_memory.py
 
 # Run all checks
 all: format lint type-check test
