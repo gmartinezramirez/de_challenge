@@ -85,37 +85,25 @@ UNICODE_RANGES = "".join(
 )
 
 Q2_TIME_QUERY = f"""
--- Definir una función temporal para extraer emojis únicos de un string
+-- Definir una función temporal para extraer emojis de un string
 CREATE TEMP FUNCTION ExtractEmoji(content STRING) AS (
-  -- Usar ARRAY_AGG con DISTINCT para eliminar duplicados inmediatamente
-  (SELECT ARRAY_AGG(DISTINCT char IGNORE NULLS)
-   FROM UNNEST(SPLIT(content, '')) AS char
-   WHERE REGEXP_CONTAINS(char, r'[{UNICODE_RANGES}]'))
+  -- Usar una expresión regular más eficiente para extraer emojis
+  (SELECT ARRAY_AGG(DISTINCT emoji IGNORE NULLS)
+   FROM UNNEST(REGEXP_EXTRACT_ALL(content, r'[{UNICODE_RANGES}]')) AS emoji)
 );
 
 -- Main Query
-WITH emoji_counts AS (
-  -- Extraer y contar emojis en una sola pasada
-  SELECT
-    emoji,
-    COUNT(*) as count
-  FROM
-    `{{project}}.{{dataset}}.{{table}}`,
-    UNNEST(ExtractEmoji(content)) as emoji
-  GROUP BY
-    emoji
-)
--- Seleccionar los top 10 emojis
-SELECT emoji, count
-FROM (
-  SELECT
-    emoji,
-    count,
-    RANK() OVER (ORDER BY count DESC) as rank
-  FROM emoji_counts
-)
-WHERE rank <= 10
-ORDER BY count DESC
+SELECT
+  emoji,
+  COUNT(*) AS count
+FROM
+  `{{project}}.{{dataset}}.{{table}}`,
+  UNNEST(ExtractEmoji(content)) AS emoji
+GROUP BY
+  emoji
+ORDER BY
+  count DESC
+LIMIT 10
 """
 
 
