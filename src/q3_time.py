@@ -37,9 +37,15 @@ Q3_TIME_QUERY = """
 WITH MentionsExtracted AS (
   SELECT
     SUBSTR(word, 2) AS username
-  FROM
-    `{project}.{dataset}.{table}`,
-    UNNEST(SPLIT(LOWER(content), ' ')) AS word
+  FROM (
+    SELECT
+      content
+    FROM
+      `{project}.{dataset}.{table}`
+    WHERE
+      REGEXP_CONTAINS(content, r'@')
+  ),
+  UNNEST(SPLIT(LOWER(content), ' ')) AS word
   WHERE
     STARTS_WITH(word, '@')
     AND LENGTH(word) > 1
