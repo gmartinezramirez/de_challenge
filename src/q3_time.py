@@ -21,7 +21,6 @@ DATASET_ID: str = "tweets"
 TABLE_NAME: str = "farmers-protest-tweets"
 # Job config
 USE_QUERY_CACHE: bool = False
-# bigquery.QueryPriority.BATCH o bigquery.QueryPriority.INTERACTIVE
 QUERY_PRIORITY: bigquery.QueryPriority = bigquery.QueryPriority.INTERACTIVE
 USE_LEGACY_SQL: bool = False
 GCP_CLIENT = bigquery.Client(project=PROJECT_ID)
@@ -33,42 +32,28 @@ JOB_CONFIG = bigquery.QueryJobConfig(
     use_legacy_sql=USE_LEGACY_SQL,
 )
 
-Q3_TIME_QUERY = """
--- Función: extraer menciones
-CREATE TEMP FUNCTION ExtractMentions(content STRING)
-RETURNS ARRAY<STRING>
-LANGUAGE js AS '''
-  return (content.match(/@[a-zA-Z0-9_]+/g) || []).map(m => m.slice(1).toLowerCase());
-''';
-
--- CTE para extraer y contar menciones en un step
-WITH MentionCounts AS (
-  SELECT
-    mention AS username,
-    COUNT(*) AS mention_count
-  FROM
-    `{file_path}`,
-    UNNEST(ExtractMentions(content)) AS mention
-  WHERE
-   -- Filter: reducir el conjunto de datos
-   -- Solo usa los que comienzan con arroba
-    REGEXP_CONTAINS(content, r'@')
-  GROUP BY
-    mention
+Q3_TIME_QUERY: str = """
+-- Extrae usernames
+WITH usernames_table AS (
+    SELECT
+        mentionedUser.username AS username
+    FROM
+        `{file_path}`,
+        UNNEST(mentionedUsers) AS mentionedUser
 )
 
--- Main query: get top10
+-- Main query: cuenta nombres de usuario y ordenarlos
 SELECT
-  username,
-  mention_count
+    username,
+    COUNT(*) AS mention_count
 FROM
-  MentionCounts
-WHERE
-  -- No cuentes vacios
-  LENGTH(username) > 0
+    usernames_table
+GROUP BY
+    username
 ORDER BY
-  mention_count DESC
-LIMIT 10
+    mention_count DESC
+LIMIT
+    10;
 """
 
 
