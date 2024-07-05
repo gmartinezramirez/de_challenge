@@ -37,14 +37,14 @@ Q3_MEMORY_QUERY: str = """
 -- Main Query: extraer, contar y ordenar las menciones de usuarios
 SELECT
   username,
-  COUNT(*) AS mention_count
+  COUNT(*) AS mention_count -- Cuenta cada mencion
 FROM (
   SELECT
-    mentionedUser.username AS username
+    mentionedUser.username AS username -- Extrae el username de cada mencion
   FROM
     `{file_path}`,
     UNNEST(mentionedUsers) AS mentionedUser
-  WHERE mentionedUsers IS NOT NULL
+  WHERE mentionedUsers IS NOT NULL -- Filtra los username null, sola usa no nulls
 ) AS usernames_table
 GROUP BY
   username

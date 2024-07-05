@@ -33,8 +33,8 @@ JOB_CONFIG = bigquery.QueryJobConfig(
 )
 
 Q3_TIME_QUERY: str = """
--- Extrae usernames
-WITH usernames_table AS (
+-- CE: Extrae los usernames en una tabla
+WITH usernames AS (
     SELECT
         mentionedUser.username AS username
     FROM
@@ -47,7 +47,7 @@ SELECT
     username,
     COUNT(*) AS mention_count
 FROM
-    usernames_table
+    usernames -- Usa la tabla de usernames
 GROUP BY
     username
 ORDER BY
