@@ -33,17 +33,11 @@ JOB_CONFIG = bigquery.QueryJobConfig(
     use_legacy_sql=USE_LEGACY_SQL,
 )
 
-Q3_TIME_QUERY: str = """
-WITH temp_mentioned_users AS (
-  SELECT mentionedUser.username, COUNT(*) AS mention_count
-  FROM `{file_path}`,
-       UNNEST(mentionedUsers) AS mentionedUser
-  WHERE mentionedUsers IS NOT NULL
-    AND mentionedUser.username IS NOT NULL
-  GROUP BY mentionedUser.username
-)
-SELECT username, mention_count
-FROM temp_mentioned_users
+Q3_TIME_QUERY: str = r"""
+SELECT REGEXP_EXTRACT(content, r'@(\w+)') AS username, COUNT(*) AS mention_count
+FROM `{file_path}`
+WHERE REGEXP_CONTAINS(content, r'@\w+')
+GROUP BY username
 ORDER BY mention_count DESC
 LIMIT 10
 """
