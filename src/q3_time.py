@@ -34,27 +34,18 @@ JOB_CONFIG = bigquery.QueryJobConfig(
 )
 
 Q3_TIME_QUERY: str = """
--- CE: Extrae los usernames en una tabla
-WITH usernames AS (
-    SELECT
-        mentionedUser.username AS username
-    FROM
-        `{file_path}`,
-        UNNEST(mentionedUsers) AS mentionedUser
+WITH temp_mentioned_users AS (
+  SELECT mentionedUser.username, COUNT(*) AS mention_count
+  FROM `{file_path}`,
+       UNNEST(mentionedUsers) AS mentionedUser
+  WHERE mentionedUsers IS NOT NULL
+    AND mentionedUser.username IS NOT NULL
+  GROUP BY mentionedUser.username
 )
-
--- Main query: cuenta nombres de usuario y ordenarlos
-SELECT
-    username,
-    COUNT(*) AS mention_count
-FROM
-    usernames -- Usa la tabla de usernames
-GROUP BY
-    username
-ORDER BY
-    mention_count DESC
-LIMIT
-    10;
+SELECT username, mention_count
+FROM temp_mentioned_users
+ORDER BY mention_count DESC
+LIMIT 10
 """
 
 
