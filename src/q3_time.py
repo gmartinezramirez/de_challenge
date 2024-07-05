@@ -1,5 +1,4 @@
 import logging
-from datetime import date
 from typing import List, Tuple
 
 from google.api_core import retry
@@ -34,59 +33,65 @@ JOB_CONFIG = bigquery.QueryJobConfig(
     use_legacy_sql=USE_LEGACY_SQL,
 )
 
-Q3_TIME_QUERY: str = """
-WITH MentionsExtracted AS (
+Q3_TIME_QUERY = """
+-- Función: extraer menciones
+CREATE TEMP FUNCTION ExtractMentions(content STRING)
+RETURNS ARRAY<STRING>
+LANGUAGE js AS '''
+  return (content.match(/@[a-zA-Z0-9_]+/g) || []).map(m => m.slice(1).toLowerCase());
+''';
+
+-- CTE para extraer y contar menciones en un step
+WITH MentionCounts AS (
   SELECT
-    SUBSTR(word, 2) AS username
-  FROM (
-    SELECT
-      content
-    FROM
-      `{project}.{dataset}.{table}`
-    WHERE
-      REGEXP_CONTAINS(content, r'@')
-  ),
-  UNNEST(SPLIT(LOWER(content), ' ')) AS word
+    mention AS username,
+    COUNT(*) AS mention_count
+  FROM
+    `{file_path}`,
+    UNNEST(ExtractMentions(content)) AS mention
   WHERE
-    STARTS_WITH(word, '@')
-    AND LENGTH(word) > 1
+   -- Filter: reducir el conjunto de datos
+   -- Solo usa los que comienzan con arroba
+    REGEXP_CONTAINS(content, r'@')
+  GROUP BY
+    mention
 )
+
+-- Main query: get top10
 SELECT
   username,
-  COUNT(*) AS mention_count
+  mention_count
 FROM
-  MentionsExtracted
-GROUP BY
-  username
+  MentionCounts
+WHERE
+  -- No cuentes vacios
+  LENGTH(username) > 0
 ORDER BY
   mention_count DESC
 LIMIT 10
 """
 
 
-def q3_time(file_path: str) -> List[Tuple[date, str]]:
+def q3_time(file_path: str) -> List[Tuple[str, int]]:
     """
     Q3 Time:
         El top 10 histórico de usuarios (username) más influyentes
         en función del conteo de las menciones (@) que registra cada uno de ellos
         Ejemplo de output:
             [("LATAM321", 387), ("LATAM_CHI", 129), ...]
-        q3_memory ejecuta la consulta Q3_TIME_QUERY que resuelve lo anterior
+        q3_time ejecuta la consulta Q3_TIME_QUERY que resuelve lo anterior
         con un enfoque eficiente en tiempo de ejecución.
 
     Args:
-        file_path (str): No se usa en esta implementación
-        se mantiene por consistencia con la firma de la función.
+        file_path (str): project.dataset.table en bigquery
     Returns:
-        List[Tuple[date, str]]: Una lista de tuplas que contienen la fecha
-                                y el usuario más activo para cada fecha.
+        List[Tuple[str, int]]: Una lista de tuplas que contienen el nombre de usuario
+        y el conteo de menciones.
     Raises:
         GoogleCloudError: Si hay un error con la API de Google Cloud.
     """
     logger.info("Starting: q3_time")
-    query = Q3_TIME_QUERY.format(
-        project=PROJECT_ID, dataset=DATASET_ID, table=TABLE_NAME
-    )
+    query = Q3_TIME_QUERY.format(file_path=file_path)
 
     try:
         query_job, client_execution_time = execute_query_with_benchmark(
@@ -94,7 +99,7 @@ def q3_time(file_path: str) -> List[Tuple[date, str]]:
         )
         print_job_details(query_job, client_execution_time)
         results = [(row.username, row.mention_count) for row in query_job.result()]
-        logger.info("Sucessful finish: q3_time")
+        logger.info("Successful finish: q3_time")
         return results
     except GoogleCloudError as e:
         print(f"Error en Bigquery: {str(e)}")
@@ -102,5 +107,6 @@ def q3_time(file_path: str) -> List[Tuple[date, str]]:
 
 
 if __name__ == "__main__":
-    result = q3_time("something")
+    bq_file_path: str = f"{PROJECT_ID}.{DATASET_ID}.{TABLE_NAME}"
+    result: List[Tuple[str, int]] = q3_time(bq_file_path)
     print(result)
