@@ -33,30 +33,25 @@ JOB_CONFIG = bigquery.QueryJobConfig(
     use_legacy_sql=USE_LEGACY_SQL,
 )
 
-Q3_MEMORY_QUERY: str = """
--- CTE: extrae las menciones de usuarios
-WITH MentionsExtracted AS (
-  SELECT
-    LOWER(REGEXP_EXTRACT(word, r'@(\\w+)')) AS username  -- Extrae el nombre de usuario (empieza con arroba)
-  FROM
-    `{file_path}`,
-    UNNEST(SPLIT(content, ' ')) AS word  -- Divide el contenido en palabras
-  WHERE
-    STARTS_WITH(word, '@')  -- Filtra solo las palabras que comienzan con '@'
-)
--- Main Query: contar y ordenar las menciones
+Q3_MEMORY_QUERY = """
+-- Main Query: extraer, contar y ordenar las menciones de usuarios
 SELECT
   username,
-  COUNT(*) AS mention_count  -- Cuenta las menciones para cada usuario
-FROM
-  MentionsExtracted
-WHERE
-  username != ''  -- No se cuentan menciones vacías
+  COUNT(*) AS mention_count
+FROM (
+  SELECT
+    mentionedUser.username AS username
+  FROM
+    `{file_path}`,
+    UNNEST(mentionedUsers) AS mentionedUser
+  WHERE mentionedUsers IS NOT NULL
+) AS usernames_table
 GROUP BY
-  username  -- Agrupa por username
+  username
 ORDER BY
-  mention_count DESC  -- Sort por menciones de forma desc (mayor a menor)
-LIMIT 10  -- Sólo 10 (top 10)
+  mention_count DESC
+LIMIT
+  10;
 """
 
 
