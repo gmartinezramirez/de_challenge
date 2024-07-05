@@ -36,6 +36,10 @@ q2_memory:
 	@echo "Running q2-memory..."
 	python src/q2_memory.py
 
+q2_time:
+	@echo "Running q2-time..."
+	python src/q2_time.py
+
 q3_memory:
 	@echo "Running q3-memory..."
 	python src/q3_memory.py

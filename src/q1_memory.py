@@ -35,8 +35,6 @@ JOB_CONFIG = bigquery.QueryJobConfig(
 
 
 Q1_MEMORY_QUERY: str = """
--- Common Table Expression(CTE)
--- CTE 1: Contar tweets por fecha
 WITH date_counts AS (
   SELECT
     DATE(date) AS tweet_date,
@@ -46,18 +44,12 @@ WITH date_counts AS (
   GROUP BY
     DATE(date)
 ),
--- CTE 2: Seleccionar las 10 fechas con más tweets
 top_10_dates AS (
-  SELECT
-    tweet_date,
-    tweet_count
-  FROM
-    date_counts
-  ORDER BY
-    tweet_count DESC
+  SELECT tweet_date, tweet_count
+  FROM date_counts
+  ORDER BY tweet_count DESC
   LIMIT 10
 ),
--- CTE 3: Contar tweets por usuario y fecha
 user_counts AS (
   SELECT
     DATE(date) AS tweet_date,
@@ -65,33 +57,21 @@ user_counts AS (
     COUNT(*) AS user_tweet_count
   FROM
     `{project}.{dataset}.{table}`
+  WHERE DATE(date) IN (SELECT tweet_date FROM top_10_dates)
   GROUP BY
-    DATE(date),
-    user.username
-),
--- CTE 4: Hacer ranking de usuarios por número de tweets en cada fecha
-ranked_users AS (
-  SELECT
-    tweet_date,
-    username,
-    user_tweet_count,
-    ROW_NUMBER() OVER (PARTITION BY tweet_date ORDER BY user_tweet_count DESC) AS rank
-  FROM
-    user_counts
+    DATE(date), user.username
 )
--- Query principal: Unir las top 10 fechas con los usuarios más activos
--- Output tweet_date, top_user (username)
 SELECT
   t.tweet_date,
-  r.username AS top_user
+  ARRAY_AGG(u.username ORDER BY u.user_tweet_count DESC LIMIT 1)[OFFSET(0)] AS top_user
 FROM
   top_10_dates t
 JOIN
-  ranked_users r
+  user_counts u
 ON
-  t.tweet_date = r.tweet_date
-WHERE
-  r.rank = 1
+  t.tweet_date = u.tweet_date
+GROUP BY
+  t.tweet_date, t.tweet_count
 ORDER BY
   t.tweet_count DESC
 """

@@ -85,7 +85,7 @@ UNICODE_RANGES = "".join(
 )
 
 Q2_MEMORY_QUERY = f"""
--- Definir una función temporal para extraer emojis únicos de un string
+-- Función temporal para extraer emojis únicos de un string
 CREATE TEMP FUNCTION ExtractEmoji(content STRING) AS (
   -- Usar ARRAY_AGG con DISTINCT para eliminar duplicados inmediatamente
   (SELECT ARRAY_AGG(DISTINCT char IGNORE NULLS)
@@ -95,7 +95,7 @@ CREATE TEMP FUNCTION ExtractEmoji(content STRING) AS (
 
 -- Main Query
 WITH emoji_counts AS (
-  -- Extraer y contar emojis en una sola pasada
+  -- Extraer y contar emojis en una sola ejecución
   SELECT
     emoji,
     COUNT(*) as count

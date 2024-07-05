@@ -34,9 +34,13 @@ JOB_CONFIG = bigquery.QueryJobConfig(
 )
 
 
-Q1_TIME_QUERY = """
--- Common Table Expression(CTE)
--- CTE 1: Contar tweets por fecha y usuario de forma paralela
+Q1_TIME_QUERY: str = """
+CREATE TEMP FUNCTION TopUserForDate(date_users ARRAY<STRUCT<username STRING, count INT64>>)
+RETURNS STRING
+LANGUAGE js AS '''
+  return date_users.reduce((a, b) => a.count > b.count ? a : b).username;
+''';
+
 WITH date_user_counts AS (
   SELECT
     DATE(date) AS tweet_date,
@@ -47,40 +51,27 @@ WITH date_user_counts AS (
   GROUP BY
     DATE(date), user.username
 ),
-
--- CTE 2: Calcular total por fecha y hace ranking de usuarios
-date_totals_and_top_users AS (
+date_totals AS (
   SELECT
     tweet_date,
-    username,
-    tweet_count AS user_tweet_count,
-    SUM(tweet_count) OVER (PARTITION BY tweet_date) AS total_date_count,
-    ROW_NUMBER() OVER (PARTITION BY tweet_date ORDER BY tweet_count DESC) AS user_rank
+    SUM(tweet_count) AS total_count,
+    ARRAY_AGG(STRUCT(username, tweet_count AS count) ORDER BY tweet_count DESC LIMIT 1) AS top_users
   FROM
     date_user_counts
+  GROUP BY
+    tweet_date
 )
-
--- Main Query: Seleccionar top 10 fechas y sus usuarios más activos
 SELECT
   tweet_date,
-  username AS top_user
-FROM
-  date_totals_and_top_users
-WHERE
-  user_rank = 1
-  AND tweet_date IN (
-    SELECT tweet_date
-    FROM (
-      SELECT tweet_date, total_date_count,
-             ROW_NUMBER() OVER (ORDER BY total_date_count DESC) AS date_rank
-      FROM date_totals_and_top_users
-      WHERE user_rank = 1
-    )
-    WHERE date_rank <= 10
-  )
+  TopUserForDate(top_users) AS top_user
+FROM (
+  SELECT *
+  FROM date_totals
+  ORDER BY total_count DESC
+  LIMIT 10
+)
 ORDER BY
-  total_date_count DESC
-LIMIT 10
+  total_count DESC
 """
 
 

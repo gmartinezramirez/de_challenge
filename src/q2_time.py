@@ -87,7 +87,6 @@ UNICODE_RANGES = "".join(
 Q2_TIME_QUERY = f"""
 -- Definir una función temporal para extraer emojis de un string
 CREATE TEMP FUNCTION ExtractEmoji(content STRING) AS (
-  -- Usar una expresión regular más eficiente para extraer emojis
   (SELECT ARRAY_AGG(DISTINCT emoji IGNORE NULLS)
    FROM UNNEST(REGEXP_EXTRACT_ALL(content, r'[{UNICODE_RANGES}]')) AS emoji)
 );
