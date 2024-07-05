@@ -34,34 +34,44 @@ JOB_CONFIG = bigquery.QueryJobConfig(
 )
 
 Q1_TIME_QUERY: str = """
+-- Funcion para seleccionar el usuario con mas tweets en una fecha
 CREATE TEMP FUNCTION TopUserForDate(date_users ARRAY<STRUCT<username STRING, count INT64>>)
 RETURNS STRING
 LANGUAGE js AS '''
   return date_users.reduce((a, b) => a.count > b.count ? a : b).username;
 ''';
 
+-- CTE: contar tweets por user y fecha
 WITH date_user_counts AS (
   SELECT
+    -- Convertir fecha a Date
     DATE(date) AS tweet_date,
     user.username,
+    -- Contar el numero de tweets por user en cada fecha
     COUNT(*) AS tweet_count
   FROM
     `{file_path}`
   GROUP BY
     DATE(date), user.username
 ),
+-- CTE: agregar totales de tweets por fecha
+--      y seleccionar users con mas tweets
 date_totals AS (
   SELECT
     tweet_date,
+    -- Sumar numero total de tweets en cada fecha
     SUM(tweet_count) AS total_count,
+    -- Crear array de users con sus count correspondiente de tweets
     ARRAY_AGG(STRUCT(username, tweet_count AS count) ORDER BY tweet_count DESC LIMIT 1) AS top_users
   FROM
     date_user_counts
   GROUP BY
     tweet_date
 )
+-- Por cada fecha seleccionar la fecha y user con mas tweets
 SELECT
   tweet_date,
+  -- Uso de la funcion para obtener el user con mas tweets en cada fecha
   TopUserForDate(top_users) AS top_user
 FROM (
   SELECT *
@@ -69,6 +79,7 @@ FROM (
   ORDER BY total_count DESC
   LIMIT 10
 )
+-- Order total de tweets descendente
 ORDER BY
   total_count DESC
 """

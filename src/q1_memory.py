@@ -34,25 +34,31 @@ JOB_CONFIG = bigquery.QueryJobConfig(
 )
 
 Q1_MEMORY_QUERY: str = """
+-- CTE: contar tweets por fecha
 WITH date_counts AS (
   SELECT
+    -- Convertir fecha a Date
     DATE(date) AS tweet_date,
+    -- Contar numero de tweets por fecha
     COUNT(*) AS tweet_count
   FROM
     `{file_path}`
   GROUP BY
     DATE(date)
 ),
+-- CTE: seleccionar top10 fechas con mas tweets
 top_10_dates AS (
   SELECT tweet_date, tweet_count
   FROM date_counts
   ORDER BY tweet_count DESC
   LIMIT 10
 ),
+-- CTE: contar tweets por user y fecha dentro de top10
 user_counts AS (
   SELECT
     DATE(date) AS tweet_date,
     user.username,
+    -- Contar el numero de tweets por user en cada fecha
     COUNT(*) AS user_tweet_count
   FROM
     `{file_path}`
@@ -60,8 +66,10 @@ user_counts AS (
   GROUP BY
     DATE(date), user.username
 )
+-- Por cada fecha seleccionar la fecha y user con mas tweets
 SELECT
   t.tweet_date,
+  -- Seleccionar el user con mas tweets en cada fecha
   ARRAY_AGG(u.username ORDER BY u.user_tweet_count DESC LIMIT 1)[OFFSET(0)] AS top_user
 FROM
   top_10_dates t
@@ -71,6 +79,7 @@ ON
   t.tweet_date = u.tweet_date
 GROUP BY
   t.tweet_date, t.tweet_count
+-- Ordenar resultado de forma descedente
 ORDER BY
   t.tweet_count DESC
 """
