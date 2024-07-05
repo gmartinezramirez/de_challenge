@@ -85,20 +85,17 @@ UNICODE_RANGES: str = "".join(
     ]
 )
 
-Q2_TIME_QUERY: str = f"""
--- Funcion: extraer emojis de un string
+Q2_TIME_QUERY: str = r"""
 CREATE TEMP FUNCTION ExtractEmoji(content STRING) AS (
-  -- REGEXP_EXTRACT_ALL extrae todos los emojis dentro del rango unicode
   (SELECT ARRAY_AGG(DISTINCT emoji IGNORE NULLS)
-   FROM UNNEST(REGEXP_EXTRACT_ALL(content, r'[{UNICODE_RANGES}]')) AS emoji)
+   FROM UNNEST(REGEXP_EXTRACT_ALL(content, r'[\x{1F600}-\x{1F64F}\x{1F300}-\x{1F5FF}\x{1F680}-\x{1F6FF}\x{1F1E6}-\x{1F1FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}\x{1F900}-\x{1F9FF}\x{1FA70}-\x{1FAFF}]')) AS emoji)
 );
 
--- Main Query
 SELECT
   emoji,
   COUNT(*) AS count
 FROM
-  `{{file_path}}`,
+  `{file_path}`,
   UNNEST(ExtractEmoji(content)) AS emoji
 GROUP BY
   emoji
