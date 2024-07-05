@@ -1,5 +1,4 @@
 import logging
-from datetime import date
 from typing import List, Tuple
 
 from google.api_core import retry
@@ -35,30 +34,33 @@ JOB_CONFIG = bigquery.QueryJobConfig(
 )
 
 Q3_MEMORY_QUERY: str = """
+-- CTE: extrae las menciones de usuarios
 WITH MentionsExtracted AS (
   SELECT
-    SUBSTR(word, 2) AS username
+    LOWER(REGEXP_EXTRACT(word, r'@(\\w+)')) AS username  -- Extrae el nombre de usuario (empieza con arroba)
   FROM
-    `{project}.{dataset}.{table}`,
-    UNNEST(SPLIT(LOWER(content), ' ')) AS word
+    `{file_path}`,
+    UNNEST(SPLIT(content, ' ')) AS word  -- Divide el contenido en palabras
   WHERE
-    STARTS_WITH(word, '@')
-    AND LENGTH(word) > 1
+    STARTS_WITH(word, '@')  -- Filtra solo las palabras que comienzan con '@'
 )
+-- Main Query: contar y ordenar las menciones
 SELECT
   username,
-  COUNT(*) AS mention_count
+  COUNT(*) AS mention_count  -- Cuenta las menciones para cada usuario
 FROM
   MentionsExtracted
+WHERE
+  username != ''  -- No se cuentan menciones vacías
 GROUP BY
-  username
+  username  -- Agrupa por username
 ORDER BY
-  mention_count DESC
-LIMIT 10
+  mention_count DESC  -- Sort por menciones de forma desc (mayor a menor)
+LIMIT 10  -- Sólo 10 (top 10)
 """
 
 
-def q3_memory(file_path: str) -> List[Tuple[date, str]]:
+def q3_memory(file_path: str) -> List[Tuple[str, int]]:
     """
     Q3 Memory:
         El top 10 histórico de usuarios (username) más influyentes
@@ -69,18 +71,15 @@ def q3_memory(file_path: str) -> List[Tuple[date, str]]:
         con un enfoque eficiente en uso de memoria.
 
     Args:
-        file_path (str): No se usa en esta implementación
-        se mantiene por consistencia con la firma de la función.
+        file_path (str): project.dataset.table en bigquery
     Returns:
-        List[Tuple[date, str]]: Una lista de tuplas que contienen la fecha
-                                y el usuario más activo para cada fecha.
+        List[Tuple[str, int]]: Una lista de tuplas que contienen el nombre de usuario
+        y el conteo de menciones.
     Raises:
         GoogleCloudError: Si hay un error con la API de Google Cloud.
     """
     logger.info("Starting: q3_memory")
-    query = Q3_MEMORY_QUERY.format(
-        project=PROJECT_ID, dataset=DATASET_ID, table=TABLE_NAME
-    )
+    query = Q3_MEMORY_QUERY.format(file_path=file_path)
 
     try:
         query_job, client_execution_time = execute_query_with_benchmark(
@@ -96,5 +95,6 @@ def q3_memory(file_path: str) -> List[Tuple[date, str]]:
 
 
 if __name__ == "__main__":
-    result = q3_memory("something")
+    bq_file_path: str = f"{PROJECT_ID}.{DATASET_ID}.{TABLE_NAME}"
+    result = q3_memory(bq_file_path)
     print(result)
