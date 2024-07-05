@@ -34,7 +34,7 @@ JOB_CONFIG = bigquery.QueryJobConfig(
     use_legacy_sql=USE_LEGACY_SQL,
 )
 
-Q3_MEMORY_QUERY = """
+Q3_MEMORY_QUERY: str = """
 WITH MentionsExtracted AS (
   SELECT
     SUBSTR(word, 2) AS username

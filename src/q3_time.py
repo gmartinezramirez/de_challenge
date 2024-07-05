@@ -34,7 +34,7 @@ JOB_CONFIG = bigquery.QueryJobConfig(
     use_legacy_sql=USE_LEGACY_SQL,
 )
 
-Q3_TIME_QUERY = """
+Q3_TIME_QUERY: str = """
 WITH MentionsExtracted AS (
   SELECT
     SUBSTR(word, 2) AS username

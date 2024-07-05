@@ -59,7 +59,7 @@ ZERO_WIDTH_JOINER = r"\x{{200D}}"
 GENDER_MODIFIERS = r"\x{{2640}}\x{{2642}}"
 
 # Unir todos los rangos en un solo string
-UNICODE_RANGES = "".join(
+UNICODE_RANGES: str = "".join(
     [
         EMOTICONS,
         MISC_SYMBOLS_PICTOGRAPHS,
@@ -85,7 +85,7 @@ UNICODE_RANGES = "".join(
     ]
 )
 
-Q2_TIME_QUERY = f"""
+Q2_TIME_QUERY: str = f"""
 -- Definir una función temporal para extraer emojis de un string
 CREATE TEMP FUNCTION ExtractEmoji(content STRING) AS (
   (SELECT ARRAY_AGG(DISTINCT emoji IGNORE NULLS)
