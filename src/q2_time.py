@@ -1,5 +1,4 @@
 import logging
-from datetime import date
 from typing import List, Tuple
 
 from google.api_core import retry
@@ -34,68 +33,38 @@ JOB_CONFIG = bigquery.QueryJobConfig(
     use_legacy_sql=USE_LEGACY_SQL,
 )
 
-# Rangos de Unicode
-# Referencia: https://www.unicode.org/charts/
+# Unicode ranges
 EMOTICONS = r"\x{1F600}-\x{1F64F}"
 MISC_SYMBOLS_PICTOGRAPHS = r"\x{1F300}-\x{1F5FF}"
 TRANSPORT_MAP_SYMBOLS = r"\x{1F680}-\x{1F6FF}"
-SUPPLEMENTAL_SYMBOLS_PICTOGRAPHS = r"\x{1F900}-\x{1F9FF}"
-SYMBOLS_PICTOGRAPHS_EXTENDED = r"\x{1FA70}-\x{1FAFF}"
 FLAGS = r"\x{1F1E6}-\x{1F1FF}"
 MISC_SYMBOLS = r"\x{2600}-\x{26FF}"
 DINGBATS = r"\x{2700}-\x{27BF}"
-GEOMETRIC_SHAPES = r"\x{25A0}-\x{25FF}"
-GEOMETRIC_SHAPES_EXTENDED = r"\x{1F780}-\x{1F7FF}"
-SUPPLEMENTAL_ARROWS_C = r"\x{1F800}-\x{1F8FF}"
-ENCLOSED_ALPHANUMERIC_SUPPLEMENT = r"\x{1F100}-\x{1F1FF}"
-ENCLOSED_IDEOGRAPHIC_SUPPLEMENT = r"\x{1F200}-\x{1F2FF}"
-SYMBOLS_ARROWS = r"\x{2B00}-\x{2BFF}"
-ORNAMENTAL_DINGBATS = r"\x{1F650}-\x{1F67F}"
-PLAYING_CARDS = r"\x{1F0A0}-\x{1F0FF}"
-ALCHEMICAL_SYMBOLS = r"\x{1F700}-\x{1F77F}"
-CHESS_SYMBOLS = r"\x{1FA00}-\x{1FA6F}"
-SKIN_TONE_MODIFIERS = r"\x{1F3FB}-\x{1F3FF}"
-ZERO_WIDTH_JOINER = r"\x{200D}"
-GENDER_MODIFIERS = r"\x{2640}\x{2642}"
+SUPPLEMENTAL_SYMBOLS_PICTOGRAPHS = r"\x{1F900}-\x{1F9FF}"
+SYMBOLS_PICTOGRAPHS_EXTENDED = r"\x{1FA70}-\x{1FAFF}"
 
-# Unir todos los rangos en un solo string
-UNICODE_RANGES: str = "".join(
-    [
-        EMOTICONS,
-        MISC_SYMBOLS_PICTOGRAPHS,
-        TRANSPORT_MAP_SYMBOLS,
-        SUPPLEMENTAL_SYMBOLS_PICTOGRAPHS,
-        SYMBOLS_PICTOGRAPHS_EXTENDED,
-        FLAGS,
-        MISC_SYMBOLS,
-        DINGBATS,
-        GEOMETRIC_SHAPES,
-        GEOMETRIC_SHAPES_EXTENDED,
-        SUPPLEMENTAL_ARROWS_C,
-        ENCLOSED_ALPHANUMERIC_SUPPLEMENT,
-        ENCLOSED_IDEOGRAPHIC_SUPPLEMENT,
-        SYMBOLS_ARROWS,
-        ORNAMENTAL_DINGBATS,
-        PLAYING_CARDS,
-        ALCHEMICAL_SYMBOLS,
-        CHESS_SYMBOLS,
-        SKIN_TONE_MODIFIERS,
-        ZERO_WIDTH_JOINER,
-        GENDER_MODIFIERS,
-    ]
+UNICODE_RANGES = (
+    f"[{EMOTICONS}"
+    f"{MISC_SYMBOLS_PICTOGRAPHS}"
+    f"{TRANSPORT_MAP_SYMBOLS}"
+    f"{FLAGS}"
+    f"{MISC_SYMBOLS}"
+    f"{DINGBATS}"
+    f"{SUPPLEMENTAL_SYMBOLS_PICTOGRAPHS}"
+    f"{SYMBOLS_PICTOGRAPHS_EXTENDED}]"
 )
 
-Q2_TIME_QUERY: str = r"""
+Q2_TIME_QUERY: str = rf"""
 CREATE TEMP FUNCTION ExtractEmoji(content STRING) AS (
   (SELECT ARRAY_AGG(DISTINCT emoji IGNORE NULLS)
-   FROM UNNEST(REGEXP_EXTRACT_ALL(content, r'[\x{1F600}-\x{1F64F}\x{1F300}-\x{1F5FF}\x{1F680}-\x{1F6FF}\x{1F1E6}-\x{1F1FF}\x{2600}-\x{26FF}\x{2700}-\x{27BF}\x{1F900}-\x{1F9FF}\x{1FA70}-\x{1FAFF}]')) AS emoji)
+   FROM UNNEST(REGEXP_EXTRACT_ALL(content, r'{UNICODE_RANGES}')) AS emoji)
 );
 
 SELECT
   emoji,
   COUNT(*) AS count
 FROM
-  `{file_path}`,
+  `{{file_path}}`,
   UNNEST(ExtractEmoji(content)) AS emoji
 GROUP BY
   emoji
@@ -105,7 +74,7 @@ LIMIT 10
 """
 
 
-def q2_time(file_path: str) -> List[Tuple[date, str]]:
+def q2_time(file_path: str) -> List[Tuple[str, int]]:
     """
     Q2 Time:
         Los top 10 emojis más usados con su respectivo conteo
@@ -117,15 +86,13 @@ def q2_time(file_path: str) -> List[Tuple[date, str]]:
     Args:
         file_path (str): project.dataset.table en bigquery
     Returns:
-        List[Tuple[date, str]]: Una lista de tuplas que contienen la fecha
+        List[Tuple[str, int]]: Una lista de tuplas que contienen la fecha
                                 y el usuario más activo para cada fecha.
     Raises:
         GoogleCloudError: Si hay un error con la API de Google Cloud.
     """
     logger.info("Starting: q2_time")
-    query = Q2_TIME_QUERY.replace("{file_path}", file_path).replace(
-        "{UNICODE_RANGES}", UNICODE_RANGES
-    )
+    query = Q2_TIME_QUERY.replace("{file_path}", file_path)
 
     try:
         query_job, client_execution_time = execute_query_with_benchmark(
@@ -142,5 +109,5 @@ def q2_time(file_path: str) -> List[Tuple[date, str]]:
 
 if __name__ == "__main__":
     bq_file_path: str = f"{PROJECT_ID}.{DATASET_ID}.{TABLE_NAME}"
-    result: List[Tuple[date, str]] = q2_time(bq_file_path)
+    result: List[Tuple[str, int]] = q2_time(bq_file_path)
     print(result)
