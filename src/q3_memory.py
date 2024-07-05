@@ -33,7 +33,7 @@ JOB_CONFIG = bigquery.QueryJobConfig(
     use_legacy_sql=USE_LEGACY_SQL,
 )
 
-Q3_MEMORY_QUERY = """
+Q3_MEMORY_QUERY: str = """
 -- Main Query: extraer, contar y ordenar las menciones de usuarios
 SELECT
   username,
@@ -91,5 +91,5 @@ def q3_memory(file_path: str) -> List[Tuple[str, int]]:
 
 if __name__ == "__main__":
     bq_file_path: str = f"{PROJECT_ID}.{DATASET_ID}.{TABLE_NAME}"
-    result = q3_memory(bq_file_path)
+    result: List[Tuple[str, int]] = q3_memory(bq_file_path)
     print(result)
