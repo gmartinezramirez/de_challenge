@@ -22,7 +22,8 @@ DATASET_ID: str = "tweets"
 TABLE_NAME: str = "farmers-protest-tweets"
 # Job config
 USE_QUERY_CACHE: bool = False
-QUERY_PRIORITY: bigquery.QueryPriority = bigquery.QueryPriority.BATCH
+# bigquery.QueryPriority.BATCH o bigquery.QueryPriority.INTERACTIVE
+QUERY_PRIORITY: bigquery.QueryPriority = bigquery.QueryPriority.INTERACTIVE
 USE_LEGACY_SQL: bool = False
 GCP_CLIENT = bigquery.Client(project=PROJECT_ID)
 RETRY_CONFIG = retry.Retry(deadline=30)
