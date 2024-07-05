@@ -85,11 +85,13 @@ UNICODE_RANGES: str = "".join(
 )
 
 Q2_MEMORY_QUERY: str = """
--- Función temporal para extraer emojis únicos de un string
+-- Funcion: extraer emojis unicos de un string
 CREATE TEMP FUNCTION ExtractEmoji(content STRING) AS (
   -- Usar ARRAY_AGG con DISTINCT para eliminar duplicados inmediatamente
   (SELECT ARRAY_AGG(DISTINCT char IGNORE NULLS)
+   -- Divide el content como char
    FROM UNNEST(SPLIT(content, '')) AS char
+   -- Filtra caracteres que coincide con los rangos unicode
    WHERE REGEXP_CONTAINS(char, r'[{UNICODE_RANGES}]'))
 );
 
@@ -101,7 +103,9 @@ WITH emoji_counts AS (
     COUNT(*) as count
   FROM
     `{file_path}`,
+    -- Aplica la funcion para extraer emojis y unnest los resultados
     UNNEST(ExtractEmoji(content)) as emoji
+  -- Agrupa por cada emoji unico
   GROUP BY
     emoji
 )
@@ -111,6 +115,7 @@ FROM (
   SELECT
     emoji,
     count,
+    -- Asigna un ranking a cada emoji en base a su conteo descendente
     RANK() OVER (ORDER BY count DESC) as rank
   FROM emoji_counts
 )
