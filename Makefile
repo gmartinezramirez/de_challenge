@@ -21,6 +21,33 @@ test:
 	@echo "Running tests..."
 	pytest src/
 
+# Execution
+
+# Run scripts
+q1_memory:
+	@echo "Running q1-memory..."
+	python src/q1_memory.py
+
+q1_time:
+	@echo "Running q1-time..."
+	python src/q1_time.py
+
+q2_memory:
+	@echo "Running q2-memory..."
+	python src/q2_memory.py
+
+q2_time:
+	@echo "Running q2-time..."
+	python src/q2_time.py
+
+q3_memory:
+	@echo "Running q3-memory..."
+	python src/q3_memory.py
+
+q3_time:
+	@echo "Running q3-time..."
+	python src/q3_time.py
+
 # Run all checks
 all: format lint type-check test
 	@echo "All checks passed!"
